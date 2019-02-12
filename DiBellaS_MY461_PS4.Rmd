@@ -1,0 +1,95 @@
+---
+title: "LT4 Problem Set"
+output: html_document
+candidateID: 15146
+---
+
+Install necessary package dependencies
+```{r message=FALSE}
+require(NetCluster)
+require(gplots)
+require(intergraph)
+require(igraph)
+```
+
+Load in csv data and structure into single matrix for analysis
+```{r}
+
+workerPositive <- read.csv("wiring_RDPOS.csv", header=TRUE, row.names=1)
+workerPositive <- as.matrix(workerPositive)
+workerPositiveGraph <- graph.adjacency(workerPositive, mode="directed")
+
+# "* -1" in workerNegative and workerArgument lines are to ensure those networks are encorporated as negative values in the combined matrix
+workerNegative <- read.csv("wiring_RDNEG.csv", header=TRUE, row.names=1)
+workerNegative <- as.matrix(workerNegative)
+workerNegative <- workerNegative * (-1)
+
+workerGame <- read.csv("wiring_RDGAM.csv", header=TRUE, row.names=1)
+workerGame <- as.matrix(workerGame)
+
+workerHelp <- read.csv("wiring_RDHLP.csv", header=TRUE, row.names=1)
+workerHelp <- as.matrix(workerHelp)
+
+workerArgument <- read.csv("wiring_RDCON.csv", header=TRUE, row.names=1)
+workerArgument <- as.matrix(workerArgument)
+workerArgument <- workerArgument * (-1)
+
+# combine disparate worker graphs into single matrix
+workerCombined <- rbind(workerPositive,
+                        workerNegative,
+                        workerGame,
+                        workerHelp,
+                        workerArgument)
+```
+
+Generate dendrogram as basis for clusters of structural similarity, and then plot matrices of positive and negative relationships between workers
+```{r}
+# formatting of function call draws from seminar code
+workerDistance <- as.dist(1 - cor(workerCombined))
+
+# setting isolate distance to 2, to prevent NaN errors in dendrogram
+workerDistance[is.na(workerDistance)==TRUE] <- 2
+workerDistance
+
+# create dendrogram based on worker structural similarity. I've chosen to break the workers into 4 sections
+workerDendrogram <- hclust(workerDistance)
+cutree(workerDendrogram, k=4)
+plot(workerDendrogram)
+rect.hclust(workerDendrogram, k=4)
+
+# merge adjacency matrices that define positive (and then negative) worker relationships into a single matrix in order to compare how structural equivalence groups appear (as defined by the dendrogram)
+workerPositiveRelationships <- workerPositive + workerGame + workerHelp
+workerPositiveRelationshipsGraph <- graph.adjacency(workerPositiveRelationships, mode="directed")
+plot.igraph(workerPositiveRelationshipsGraph, 
+            frame.color=NA, 
+            edge.color="grey", 
+            edge.arrow.size=0.5,
+            edge.arrow.width=0.7,
+            vertex.color=cutree(workerDendrogram, k=4),
+            vertex.frame.color=NA, 
+            vertex.label.family="Inconsolata", 
+            vertex.label.cex=.6, 
+            vertex.size=12,
+            width=4)
+
+workerNegativeRelationships <- (workerNegative + workerArgument) * (-1)
+workerNegativeRelationshipsGraph <- graph.adjacency(workerNegativeRelationships, mode="directed")
+plot.igraph(workerPositiveRelationshipsGraph, 
+            frame.color=NA, 
+            edge.color="grey", 
+            edge.arrow.size=0.5,
+            edge.arrow.width=0.7,
+            vertex.color=cutree(workerDendrogram, k=4),
+            vertex.frame.color=NA, 
+            vertex.label.family="Inconsolata", 
+            vertex.label.cex=.6, 
+            vertex.size=12,
+            width=4)
+```
+
+For my construction of block membership, I decided to use 4 blocks, rather than 2 like Roethlisberger & Dickson. Since our measurement of membership is a reflection of structural similarity, I thought I should show the number of interesting groups with interesting properties, rather than explicit social cliques. On the one hand, two of my blocks mostly agree with Roethlisberger & Dickson: the dendrogram puts W1, W2, W3, and S4 in one group and W7, W8, W9, and S4 in another. They disagree, however, in how they categorize the inspectors and peripheral workers. Because they occupy a similar location, at the edge of the cluster of W4, S1, W3, and W1, the nodes W2, W5, and I1 are treated as similar. Again, this is not to say that they form a social clique (especially since they have few connections between one another), but rather that they have similar structural positions. Removing a block would have placed those nodes along with W4, S1, W3, and W1, but I thought that these non-central nodes should be recorded as such. Finally, the isolates (and nearly isolates) receive their own block with S2 and I3. In a way, that grouping agrees with Roethlisberger & Dickson, who mark the isolates as unique. 
+
+Create supervision matrix
+```{r}
+
+```
